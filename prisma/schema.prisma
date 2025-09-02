@@ -10,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -19,7 +19,7 @@ model User {
   username           String          @unique
   email              String?         @unique
   password           String?
-  balance            BigInt          @default(0)
+  balance            Int             @default(0)
   user_items         UserItem[]
   market_requests    MarketRequest[]
   created_at         DateTime?       @default(now())
@@ -38,21 +38,21 @@ model Item {
 }
 
 model UserItem {
-  id             Int            @id @default(autoincrement())
+  id             Int             @id @default(autoincrement())
   user_id        Int?
   item_id        Int?
   quantity       Int
-  user           User?          @relation(fields: [user_id], references: [id])
-  item           Item?          @relation(fields: [item_id], references: [id])
-  market_listing MarketListing?
+  user           User?           @relation(fields: [user_id], references: [id])
+  item           Item?           @relation(fields: [item_id], references: [id])
+  market_listing MarketListing[]
 }
 
 model MarketListing {
   id           Int       @id @default(autoincrement())
-  user_item_id Int?      @unique
+  user_item_id Int?
   user_item    UserItem? @relation(fields: [user_item_id], references: [id])
   quantity     Int
-  price        BigInt
+  price        Int
   created_at   DateTime  @default(now())
 }
 
@@ -62,14 +62,9 @@ model MarketRequest {
   item_id    Int
   buyer      User     @relation(fields: [buyer_id], references: [id])
   item       Item     @relation(fields: [item_id], references: [id])
-  price      BigInt
+  price      Int
   quantity   Int
   created_at DateTime @default(now())
-}
-
-enum Source {
-  LISTING
-  REQUEST
 }
 
 model Transaction {
@@ -80,8 +75,7 @@ model Transaction {
   buyer     User?    @relation("buyerTransactions", fields: [buyer_id], references: [id])
   seller    User?    @relation("sellerTransactions", fields: [seller_id], references: [id])
   item      Item?    @relation(fields: [item_id], references: [id])
-  price     BigInt
+  price     Int
   quantity  Int
-  source    Source
   timestamp DateTime @default(now())
 }

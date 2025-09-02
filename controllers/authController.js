@@ -13,22 +13,19 @@ async function login(req, res) {
     });
 
     if (!user) {
-        res.status(401).json({
+        return res.status(401).json({
             message: 'Username atau password salah'
         });
 
-        return;
     }
 
     // verify password
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
-        res.status(401).json({
+        return res.status(401).json({
             message: 'Username atau password salah'
         });
-
-        return;
     }
 
     // create token
