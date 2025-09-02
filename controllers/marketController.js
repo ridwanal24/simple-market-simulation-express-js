@@ -21,8 +21,48 @@ async function getDepth(req, res) {
         })
     }
 
+    const bid = await prisma.marketRequest.findMany({
+        where: {
+            item_id: parseInt(asset)
+        },
+        orderBy: [
+            {
+                price: 'desc'
+            },
+            {
+                created_at: 'asc'
+            }
+        ],
+        select: {
+            price: true,
+            quantity: true
+        },
+        take: 10
+    })
+
+    const ask = await prisma.marketListing.findMany({
+        where: {
+            item_id: parseInt(asset)
+        },
+        orderBy: [
+            {
+                price: 'asc'
+            },
+            {
+                created_at: 'asc'
+            }
+        ],
+        select: {
+            price: true,
+            quantity: true
+        },
+        take: 10
+    })
+
+
     return res.json({
-        message: 'Oke'
+        ask,
+        bid
     });
 }
 

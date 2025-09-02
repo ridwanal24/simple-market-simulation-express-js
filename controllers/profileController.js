@@ -40,24 +40,38 @@ async function getBalance(req, res) {
 }
 
 async function getAssets(req, res) {
+    const { asset = '' } = req.query || {}
+    let userItems;
+
     try {
-        const user = await prisma.user.findUnique({
+        if (asset) {
+            const userItems = await prisma.userItem.findFirst({
+                where: {
+                    user_id: req.user.id,
+                    item_id: parseInt(asset)
+                },
+                include: {
+                    item: true,
+                    item_id: false,
+                    user_id: false
+                }
+            });
+
+            return res.json(userItems);
+        }
+        const userItems = await prisma.userItem.findMany({
             where: {
-                id: req.user.id
+                user_id: req.user.id,
             },
             include: {
-                password: false,
-                balance: false,
-                created_at: false,
-                user_items: {
-                    include: {
-                        item: true
-                    }
-                }
+                item: true,
+                item_id: false,
+                user_id: false
             }
-        })
+        });
+        return res.json(userItems);
 
-        res.json(user);
+
     } catch (error) {
         console.log(error)
         res.status(500).json({ message: 'Internal Server Error' });

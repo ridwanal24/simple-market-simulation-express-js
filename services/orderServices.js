@@ -40,7 +40,6 @@ async function createBuyLimit(req, res, asset, qty, price) {
 }
 
 async function createSellLimit(req, res, asset, qty, price) {
-    // TODO jika price lebih rendah dari bid tertinggi, buat jadi market
 
     // cek dulu punya asset nya berapa
     const userItem = await prisma.userItem.findFirst({
@@ -59,7 +58,8 @@ async function createSellLimit(req, res, asset, qty, price) {
             // tambah ke orderbook daftar penjual
             const order = await tx.marketListing.create({
                 data: {
-                    user_item_id: userItem.id,
+                    seller_id: userItem.user_id,
+                    item_id: asset,
                     quantity: qty,
                     price: price
                 }
@@ -74,6 +74,7 @@ async function createSellLimit(req, res, asset, qty, price) {
                     quantity: userItem.quantity - qty
                 }
             });
+
             return res.json(order);
         })
     } catch (error) {
@@ -87,6 +88,9 @@ async function createBuyMarket(req, res, asset, qty) {
     // Cek dulu balance nya ada gk
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     const ask = await prisma.marketListing.findFirst({
+        where: {
+            item_id: asset
+        },
         orderBy: [
             {
                 price: 'asc',
@@ -110,6 +114,9 @@ async function createBuyMarket(req, res, asset, qty) {
 
                 // ambil ask termurah
                 const ask = await tx.marketListing.findFirst({
+                    where: {
+                        item_id: asset
+                    },
                     orderBy: [
                         {
                             price: 'asc',
@@ -122,7 +129,7 @@ async function createBuyMarket(req, res, asset, qty) {
 
                 // jika gk ada penjual
                 if (!ask) {
-                    return res.status(400).json({ message: 'Penjual Tidak Ada' });
+                    return res.status(200).json({ message: `Tersisa ${remainingQty} karena tidak ada penjual` });
                 }
 
                 if (remainingQty >= ask.quantity) { // jika ask dilahap semua
@@ -136,7 +143,7 @@ async function createBuyMarket(req, res, asset, qty) {
 
                     // cek jika balance kurang
                     if (user.balance < ask.price * ask.quantity) {
-                        return res.status(200).json({ message: 'Tereksekusi sebagian karena balance kurang' });
+                        return res.status(200).json({ message: 'Tidak tereksekusi atau tereksekusi sebagian karena balance kurang dari adanya slipage' });
                     }
 
                     // kurangi balance user
@@ -184,21 +191,18 @@ async function createBuyMarket(req, res, asset, qty) {
                     })
 
                     // tambah balance penjual
-                    const sellerUserItem = await tx.userItem.findUnique({
+                    const seller = await tx.user.findUnique({
                         where: {
-                            id: ask.user_item_id
-                        },
-                        include: {
-                            user: true
+                            id: ask.seller_id
                         }
                     })
 
                     await tx.user.update({
                         where: {
-                            id: sellerUserItem.user_id
+                            id: seller.id
                         },
                         data: {
-                            balance: sellerUserItem.user.balance + ask.price * ask.quantity
+                            balance: seller.balance + ask.price * ask.quantity
                         }
                     })
 
@@ -206,7 +210,7 @@ async function createBuyMarket(req, res, asset, qty) {
                     await tx.transaction.create({
                         data: {
                             buyer_id: req.user.id,
-                            seller_id: sellerUserItem.user_id,
+                            seller_id: seller.id,
                             item_id: asset,
                             price: ask.price,
                             quantity: ask.quantity,
@@ -214,6 +218,7 @@ async function createBuyMarket(req, res, asset, qty) {
                     })
 
                     remainingQty = remainingQty - ask.quantity
+
                 } else if (remainingQty < ask.quantity) { // jika ask diambil sebagian
                     // cek sisa balance
                     const user = await tx.user.findUnique({
@@ -224,7 +229,7 @@ async function createBuyMarket(req, res, asset, qty) {
 
                     // cek jika balance kurang
                     if (user.balance < ask.price * remainingQty) {
-                        return res.status(200).json({ message: 'Terjual Sebagian' });
+                        return res.status(200).json({ message: `${remainingQty} belum tereksekusi karena balance kurang` });
                     }
 
                     // kurangi balance user
@@ -275,21 +280,18 @@ async function createBuyMarket(req, res, asset, qty) {
                     })
 
                     // tambah balance penjual
-                    const sellerUserItem = await tx.userItem.findUnique({
+                    const seller = await tx.user.findUnique({
                         where: {
-                            id: ask.user_item_id
-                        },
-                        include: {
-                            user: true
+                            id: ask.seller_id
                         }
                     })
 
                     await tx.user.update({
                         where: {
-                            id: sellerUserItem.user_id
+                            id: seller.id
                         },
                         data: {
-                            balance: sellerUserItem.user.balance + ask.price * remainingQty
+                            balance: seller.balance + ask.price * remainingQty
                         }
                     })
 
@@ -297,7 +299,7 @@ async function createBuyMarket(req, res, asset, qty) {
                     await tx.transaction.create({
                         data: {
                             buyer_id: req.user.id,
-                            seller_id: sellerUserItem.user_id,
+                            seller_id: seller.id,
                             item_id: asset,
                             price: ask.price,
                             quantity: remainingQty,
@@ -337,6 +339,9 @@ async function createSellMarket(req, res, asset, qty) {
     }
 
     const bid = await prisma.marketRequest.findFirst({
+        where: {
+            item_id: asset
+        },
         orderBy: [
             {
                 price: 'desc',
@@ -354,6 +359,9 @@ async function createSellMarket(req, res, asset, qty) {
             while (remainingQty > 0) {
                 // ambil bid termahal
                 const bid = await tx.marketRequest.findFirst({
+                    where: {
+                        item_id: asset
+                    },
                     orderBy: [
                         {
                             price: 'desc',
@@ -366,18 +374,35 @@ async function createSellMarket(req, res, asset, qty) {
 
                 // jika gk ada pembeli
                 if (!bid) {
-                    return res.status(400).json({ message: 'Pembeli Tidak Ada' });
+                    return res.status(200).json({ message: `Tersisa ${remainingQty} karena tidak ada pembeli` });
                 }
 
                 if (remainingQty >= bid.quantity) { // jika bid dilahap semua
-
-                    // tambah balance user
+                    // cek asset user
                     const user = await tx.user.findUnique({
                         where: {
                             id: req.user.id
+                        },
+                        include: {
+                            user_items: {
+                                where: {
+                                    item_id: asset
+                                }
+                            }
                         }
                     })
 
+                    // kurangi asset user
+                    await tx.userItem.update({
+                        where: {
+                            id: user.user_items[0].id
+                        },
+                        data: {
+                            quantity: user.user_items[0].quantity - bid.quantity
+                        }
+                    })
+
+                    // tambah balance user
                     await tx.user.update({
                         where: {
                             id: req.user.id
@@ -421,7 +446,7 @@ async function createSellMarket(req, res, asset, qty) {
                         }
                     })
 
-                    // TODO catat transaksi
+                    // catat transaksi
                     await tx.transaction.create({
                         data: {
                             buyer_id: bid.buyer_id,
@@ -433,14 +458,33 @@ async function createSellMarket(req, res, asset, qty) {
                     })
 
                     remainingQty = remainingQty - bid.quantity
+
                 } else if (remainingQty < bid.quantity) { // bid diambil sebagian
-                    // tambah balance user
+                    // ambil asset user
                     const user = await tx.user.findUnique({
                         where: {
                             id: req.user.id
+                        },
+                        include: {
+                            user_items: {
+                                where: {
+                                    item_id: asset
+                                }
+                            }
                         }
                     })
 
+                    // kurangi asset user
+                    await tx.userItem.update({
+                        where: {
+                            id: user.user_items[0].id
+                        },
+                        data: {
+                            quantity: user.user_items[0].quantity - remainingQty
+                        }
+                    })
+
+                    // tambah balance user
                     await tx.user.update({
                         where: {
                             id: req.user.id
@@ -512,10 +556,6 @@ async function createSellMarket(req, res, asset, qty) {
     }
 
 
-    return res.json({ user: user, bid: bid })
-    // if (user.balance < ask.price * qty) {
-    //     return res.status(400).json({ message: 'Balance Not Enough' });
-    // }
 }
 
 module.exports = {

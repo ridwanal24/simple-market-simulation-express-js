@@ -32,6 +32,9 @@ async function createOrder(req, res) {
     if (type === 'limit' && side === 'buy') {
         //  jika price lebih tinggi atau sama dengan ask terendah, buat jadi market
         const ask = await prisma.marketListing.findFirst({
+            where: {
+                item_id: asset
+            },
             orderBy: [
                 {
                     price: 'asc',
@@ -42,7 +45,7 @@ async function createOrder(req, res) {
             ]
         })
 
-        if (price >= ask.price) {
+        if (ask && price >= ask.price) {
             return orderServices.createBuyMarket(req, res, asset, qty);
         }
 
@@ -54,6 +57,9 @@ async function createOrder(req, res) {
     if (type === 'limit' && side === 'sell') {
         // jika price lebih rendah atau sama dengan bid tertinggi, buat jadi market
         const bid = await prisma.marketRequest.findFirst({
+            where: {
+                item_id: asset
+            },
             orderBy: [
                 {
                     price: 'desc',
@@ -64,7 +70,7 @@ async function createOrder(req, res) {
             ]
         })
 
-        if (price <= bid.price) {
+        if (bid && price <= bid.price) {
             return orderServices.createSellMarket(req, res, asset, qty);
         }
 
