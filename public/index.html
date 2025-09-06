@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body>
+    <div class="flex flex-col md:flex-row">
+        <div class="md:w-2/3 w-full p-4">
+            <div>
+                <div class="text-sm font-medium">Harga Telur</div>
+                <div id="price" class="font-bold text-lg"></div>
+            </div>
+            <div id="chart"></div>
+        </div>
+        <div id="orderbook" class="md:w-1/3 flex flex-row md:flex-col gap-2 w-full p-4 text-sm">
+            <div class="flex gap-2 items-center">
+                <div class="text-sm font-medium">Orderbook</div>
+                <small class="text-gray-400">(Ask / Bid)</small>
+            </div>
+            <div id="ask" class="space-y-2 w-full">
+                <div class="w-full flex justify-between">
+                    <p>1000</p>
+                    <p>637</p>
+                </div>
+                <div class="w-full flex justify-between">
+                    <p>1000</p>
+                    <p>637</p>
+                </div>
+            </div>
+            <div class="w-full h-[1px] bg-gray-200"></div>
+            <div id="bid" class="space-y-2 w-full"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="./script.js"></script>
+</body>
+
+</html>

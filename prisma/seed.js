@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma');
 const bcrypt = require('bcrypt');
+const { faker } = require('@faker-js/faker');
 
 async function seed() {
     // User Seeder
@@ -34,6 +35,8 @@ async function seed() {
             id: i + 3,
             username: `bot_${i}`,
             email: `bot_${i}@email.com`,
+            name: faker.person.fullName(),
+            // balance: Math.floor(Math.random() * 1000000) || 1,
             balance: 1000000,
             password: await bcrypt.hash('password', 10)
         })
@@ -64,16 +67,31 @@ async function seed() {
         console.log(error)
     }
 
-    // Kasih 1 juta telur ke bandar telur
+    // Kasih 1000000 telur ke tiap bot
     await prisma.userItem.deleteMany();
     try {
-        await prisma.userItem.create({
-            data: {
-                user_id: 2,
-                item_id: 1,
-                quantity: 1000000
-            }
-        });
+
+        // await prisma.userItem.create({
+        //     data: {
+        //         user_id: 2,
+        //         item_id: 1,
+        //         quantity: 1000000
+        //     }
+        // });
+
+        for (let i = 1; i <= 100; i++) {
+            await prisma.userItem.create({
+                data: {
+                    user_id: i + 3,
+                    item_id: 1,
+                    // quantity: Math.floor(Math.random() * 10) || 1
+                    quantity: 1000
+                }
+
+            });
+        }
+
+
     } catch (error) {
         console.log(error)
     }

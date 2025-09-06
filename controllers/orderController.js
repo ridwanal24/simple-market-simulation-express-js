@@ -91,6 +91,8 @@ async function createOrder(req, res) {
 
 }
 
+async function cancelOrder(req, res) { }
+
 async function getOrders(req, res) { }
 
 module.exports = {

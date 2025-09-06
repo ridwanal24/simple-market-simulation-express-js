@@ -20,4 +20,10 @@ router.post('/trade/order', authMiddleware, orderController.createOrder);
 // OrderBook
 router.get('/market/depth', marketController.getDepth);
 
+// Klines
+router.get('/market/klines', marketController.getKlines);
+
+// History transactions
+router.get('/market/transactions', marketController.getTransactions);
+
 module.exports = router
